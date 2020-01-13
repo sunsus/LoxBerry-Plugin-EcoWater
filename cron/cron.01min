@@ -1,0 +1,2 @@
+#!/bin/bash
+$LBPBIN/ecowater/pull.pl

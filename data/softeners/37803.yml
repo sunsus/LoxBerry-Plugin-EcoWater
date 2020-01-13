@@ -1,0 +1,685 @@
+# Program code MPC00378
+# EWS ECR3500R30
+
+
+# Yaml configuration format
+# (http://yaml.org/spec/1.2/spec.html)
+#
+# Comments start with a hash symbol
+#
+# Indentation defines hierarchy, there are no rigid indentation requirements other than children
+# must be indented more than their parents, siblings have the same amount of indentation. Indentation can be
+# any number of spaces or tab characters. My preference is 2 spaces.
+#
+# Key names end with a colon
+#
+# List items are "bulleted" with a dash (and require a space after the dash)
+#
+# List items may be values, mappings (key value pairs), or a sequence of mappings
+#
+# Blank lines are fine anywhere
+#
+# Some characters have special meaning in Yaml (like % and :), so keys or values containing reserved characters
+# be wrapped in quotes (format: "%1.1f", "hrs:min": ...) in order to properly escape the side effects
+#
+# Free Editors:
+# (Any) Sublime Text 2 (http://www.sublimetext.com/2)
+# (Windows) Notepad ++ (http://notepad-plus-plus.org/)
+# (OSX) Text Wrangler (http://www.barebones.com/products/textwrangler/)
+#
+# Online Parser:
+# http://yaml-online-parser.appspot.com/
+#
+
+# Product Image
+
+product_image: 3500_Tank_In_Tank
+
+# EASE Report Data
+resin_load: 0.88
+refill_rate: 0.3
+turbine_revolutions_per_gallon: 152
+valve_type: 1" Double Disk
+
+# Units of Measurement
+
+# The user will make some unit preference selections in the web app, some will be implied. For instance, if
+# the user chooses 'liter' for volume, that also implies that they'd like 'liter/min' for flow_rate.
+#
+# Device properties that have only one type of unit associated with them (such as regen_time_secs) will have a 'uom: sec'
+# variable set. The app will know to display that property as a 'sec' unit without needing to check user preferences.
+#
+# Device properties that can be displayed as more than one type of units have a 'uom_group' variable in this config file, the value
+# of 'uom_group' corresponds to the groups below. That way, the app is able to grab a property from the cloud,
+# see that it belongs to a certain uom_group, check the user preference for that particular metric,
+# and perform conversions/formatting for display.
+#
+# Example: app needs to display the amount of water used today:
+# 1) app selects 'gallons_used_today' from cloud
+# 2) from this config file, app recognizes that 'gallons_used_today' belongs to the 'volume' uom_group
+# 3) app checks user preference setting for 'volume' units, sees that the user wants to view liters
+# 4) app applies liter conversion and format rules defined in this config file to display numerical value
+# 5) app uses singular/plural unit labeling defined in this config file for display
+
+# Unit groups
+
+uom_groups:
+
+  volume:
+    - Gallon
+    - Liter
+  flow_rate:
+    - liter/min
+    - gpm
+  hardness:
+    - grain
+    - ppm
+    - mol
+  time_display:
+    - 12 hour
+    - 24 hour
+  capacity:
+    - grain
+    - mol
+    - degree_dH
+    - degree_f
+  weight:
+    - pounds
+    - kilograms
+
+
+# Unit types
+# the conversion factors describe converting from storage format to display format
+# these factors also imply how to convert from display format to storage format, by reversing the operation (* 1 / (factor))
+
+# One aspect to conversion that is ambiguous here is that while the ppm conversion (17.118) applies to the stored grain per gallon
+# value, there is nothing in this yaml that explicitly links ppm to grain per gallon
+
+uom:
+
+  grain:
+    singular: grain
+    plural: grains
+    min: 1
+    max: 160
+    step: 1
+    default: 25
+    format:
+    conversion: 1
+  ppm:
+    singular: ppm
+    plural: ppm
+    min: 15
+    max: 2740
+    step: .5
+    default: 430
+    format:
+    # this conversion refers to a stored grain per gallon value
+    conversion: 17.118
+  ppm2:
+    singular: ppm
+    plural: ppm
+    min: 0
+    max: 120
+    step: 0.1
+    default: 0
+    format: "%1.1f"
+    conversion: 0.1
+  gpm:
+    singular: gpm
+    plural: gpm
+    min: 0.1
+    max: 20
+    step: 0.1
+    default: 0.4
+    format: "%1.1f"
+    conversion: 0.1
+  liter/min:
+    singular: liter/min
+    plural: liters/min
+    min: 0.5
+    max: 75.5
+    step: 0.5
+    default: 1.5
+    format: "%1.1f"
+    conversion: 0.3785412
+  month:
+    singular: month
+    plural: months
+    min: 0
+    max: 24
+    step: 1
+    default: 0
+    format:
+    conversion:
+  day:
+    singular: day
+    plural: days
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion:
+  "hrs:min":
+    singular: "hrs:min"
+    plural: "hrs:min"
+    min: 0
+    max: 23
+    step: 1
+    default: 2
+    format: Time
+    conversion: Time convert
+  "hh:mm:ss":
+    singular: "hh:mm:ss"
+    plural: "hh:mm:ss"
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 1
+  min:
+    singular: minute
+    plural: minutes
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 1
+  minute:
+    singular: minutes
+    plural: minutes
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 0.016666667
+  sec:
+    singular: sec
+    plural: secs
+    min: 0.0
+    max: 25.0
+    step: 0.1
+    default: 1.0
+    format:
+    conversion: 1
+  gallon:
+    singular: gallon
+    plural: gallons
+    min: 1
+    max: 255
+    step: 1
+    default: 1
+    format:
+    conversion: 1
+  liter:
+    singular: liter
+    plural: liters
+    min: 3.785
+    max: 374
+    step: 3.785
+    default: 3.785
+    format: "%1.3f"
+    conversion: 3.785412
+  dBm:
+    singular: dBm
+    plural: dBm
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 1
+  mol:
+    singular: mol
+    plural: mols
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 0.000648088
+  degree_f:
+    singular: degree_f
+    plural: degree_f
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 0.006493506
+  percent:
+    singular: percent
+    plural: percent
+    min:
+    max:
+    step:
+    default:
+    format: "%1.1f"
+    conversion: 1
+  pound:
+    singular: pound
+    plural: pounds
+    min:
+    max:
+    step:
+    default:
+    format: "%1.1f"
+    conversion: 1
+  kilogram:
+    singular: kilogram
+    plural: kilograms
+    min:
+    max:
+    step:
+    default:
+    format: "%1.1f"
+    conversion: 0.4535924
+  grains/pound:
+    singular: grains/pound
+    plural: grains/pound
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 1
+  sec/rev:
+    singular: sec/rev
+    plural: secs/rev
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 1
+  dbm:
+    singular: dbm
+    plural: dbm
+    min:
+    max:
+    step:
+    default:
+    format:
+    conversion: 1
+
+device_properties:
+
+  # device_properties have (nothing is required):
+  #   enum (list)
+  #   report (boolean)
+  #   uom (identifies a specific unit of measure to display)
+  #   uom_group (identifies a list of displayable units)
+
+  # The web app will get "type" and "read-only" properties from the ayla service, not this configuration file
+
+  regen_status_enum:
+    enum:
+      - none
+      - scheduled
+      - regenerating
+    default: 0
+  avg_daily_use_gals:
+    report: true
+    uom_group: volume
+  hardness_grains:
+    report: true
+    uom: grain
+  gallons_used_today:
+    report: true
+    uom_group: volume
+  regen_time_secs:
+    report: true
+    uom: sec
+  pwa_number:
+  program_code:
+  build_date_code:
+  build_year:
+    report: true
+  build_day:
+    report: true
+  build_fixture:
+    report: true
+  build_sequence_number:
+    report: true
+  salt_type_enum:
+    report: true
+    enum:
+      - NaCl
+      - KCl
+  feature_97pct_enum:
+    report: true
+    default: 0
+    enum:
+      - Off
+      - On
+  valve_motor_state_enum:
+    report: true
+    enum:
+      - off
+      - on
+  valve_pos_switch_enum:
+    report: true
+    enum:
+      - closed
+      - open
+  operating_capacity_grains:
+    report: true
+    uom_group: capacity
+  avg_daily_use_day_1_gals:
+    report: true
+    uom_group: volume
+  avg_daily_use_day_2_gals:
+    report: true
+    uom_group: volume
+  avg_daily_use_day_3_gals:
+    report: true
+    uom_group: volume
+  avg_daily_use_day_4_gals:
+    report: true
+    uom_group: volume
+  avg_daily_use_day_5_gals:
+    report: true
+    uom_group: volume
+  avg_daily_use_day_6_gals:
+    report: true
+    uom_group: volume
+  avg_daily_use_day_7_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_1_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_2_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_3_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_4_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_5_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_6_gals:
+    report: true
+    uom_group: volume
+  avg_daily_dev_day_7_gals:
+    report: true
+    uom_group: volume
+  treated_water_avail_gals:
+    report: true
+    uom_group: volume
+  days_since_last_regen:
+    report: true
+    uom: day
+  avg_days_between_regens:
+    uom: day
+    conversion: 0.01
+  backwash_secs:
+    report: true
+    uom: sec
+  fast_rinse_secs:
+    report: true
+    uom: sec
+  second_backwash_secs:
+    report: true
+    uom: sec
+  max_days_between_regens:
+    report: true
+    uom: day
+    default: 0
+    enum:
+      - Auto
+      - 1 Day
+      - 2 Days
+      - 3 Days
+      - 4 Days
+      - 5 Days
+      - 6 Days
+      - 7 Days
+      - 8 Days
+      - 9 Days
+      - 10 Days
+      - 11 Days
+      - 12 Days
+      - 13 Days
+      - 14 Days
+      - 15 Days
+  rinse_type_enum:
+    report: true
+    enum:
+      - clean feature
+      - normal
+      - second_backwash
+  aux_control_type_enum:
+    # the FE needs to know which selection is chemical feed
+    chem_feed_option: 4
+    default: 0
+    enum:
+      - Off
+      - Bypass
+      - Chlorine Generator
+      - Water Flow
+      - Chemical Feed
+      - Fast Rinse
+      - On
+  chem_feed_gals:
+    uom_group: volume
+    default: 1
+    min: 1
+    max: 255
+  chem_feed_tenths_secs:
+    default: 10
+    min: 0
+    max: 25.5
+    step: 0.1
+  total_regens:
+    report: true
+  manual_regens:
+    report: true
+  second_backwash_cycles:
+    report: true
+  valve_pos_time_left_secs:
+    report: true
+    uom: sec
+  regen_time_rem_secs:
+    report: true
+    format: Time
+    uom: sec
+  days_in_operation:
+    report: true
+    uom: day
+  current_time_secs:
+    report: true
+    format: Time
+    uom: sec
+  peak_water_flow_gpm:
+    report: true
+    uom_group: flow_rate
+    conversion: 0.1
+  current_valve_position_enum:
+    report: true
+    enum:
+      - service
+      - fill
+      - brine_slow_rinse
+      - backwash
+      - fast_rinse
+  error_code:
+    report: true
+    enum:
+      - none (0)
+  current_cam_speed_secs:
+    report: true
+    uom: sec
+  error_1_count:
+    report: true
+  error_3_count:
+    report: true
+  error_4_count:
+    report: true
+  error_5_count:
+    report: true
+  total_salt_use_lbs:
+    report: true
+    uom_group: weight
+    conversion: 0.1
+  salt_effic_grains_per_lb:
+    report: true
+    uom: grains/pound
+  avg_salt_per_regen_lbs:
+    report: true
+    uom_group: weight
+    format: "%1.4f"
+    conversion: 0.0001
+  total_rock_removed_lbs:
+    report: true
+    uom_group: weight
+    format: "%1.1f"
+    conversion: 0.1
+  daily_avg_rock_removed_lbs:
+    report: true
+    uom_group: weight
+    format: "%1.4f"
+    conversion: 0.0001
+  rock_removed_since_rech_lbs:
+    report: true
+    uom_group: weight
+    format: "%1.4f"
+    conversion: 0.0001
+  total_outlet_water_gals:
+    uom_group: volume
+  average_exhaustion_percent:
+    report: true
+    format: "%1.1f"
+    conversion: 0.1
+  total_untreated_water_gals:
+    report: true
+    uom_group: volume
+  start_cam_speed_secs:
+    report: true
+    uom: sec
+  valve_reindex_count:
+    report: true
+  power_outage_count:
+    report: true
+  time_lost_events:
+    report: true
+  days_since_last_time_loss:
+    report: true
+  longest_rec_outage_mins:
+    report: true
+    uom: min
+  current_water_flow_gpm:
+    report: true
+    uom_group: flow_rate
+    conversion: 0.1
+  out_of_salt_estimate_days:
+    uom: day
+  salt_level_tenths:
+    report: true
+    min: 0
+    max: 80
+    step: 10
+    format: "%1.1f"
+    conversion: 0.1
+  flow_monitor_alert:
+  flow_monitor_trip_sec:
+    min: 10
+    max: 64800
+    step: 1
+    default: 1200
+    uom: sec
+  flow_monitor_min_rate_gpm:
+    uom_group: flow_rate
+    conversion: 0.1
+  excessive_water_use_alert:
+  water_counter_gals:
+    report: true
+    uom_group: volume
+  chem_feed_secs:
+    max: 250
+    step: 1
+    default: 1
+    format: "%1.1f"
+    uom: sec
+  user_lockout_enum:
+    report: true
+    enum:
+      - unlocked
+      - locked
+  weight_unit_enum:
+    report: true
+    enum:
+      - pounds
+      - kilograms
+  iron_level_tenths_ppm:
+    report: true
+    uom: ppm2
+  requested_valve_pos_enum:
+    report: true
+    enum:
+      - service
+      - fill
+      - brine_slow_rinse
+      - backwash
+      - fast_rinse
+  efficiency_mode_enum:
+    enum:
+      - Salt Efficient
+      - Auto Adjusting
+      - High Capacity
+    default: 1
+  language_enum:
+    report: true
+    enum:
+      - english
+      - spanish
+      - french
+      - italian
+      - german
+      - dutch
+      - polish
+      - russian
+      - hungarian
+      - turkish
+      - lithuanian
+      - greek
+      - romanian
+  low_salt_trip_level_days:
+    report: true
+    default: 4
+    enum:
+      - off (0)
+    uom: day
+  capacity_remaining_percent:
+    report: true
+    format: "%1.1f"
+    conversion: 0.1
+  aux_control_state_enum:
+    report: true
+    enum:
+      - off
+      - on
+  regen_enable_enum:
+    report: true
+    enum:
+      - disabled
+      - enabled
+  depletion_alert:
+  service_reminder_months:
+    default: 2
+    report: true
+    enum:
+      - off (0)
+    uom: month
+  service_reminder_alert:
+  rf_signal_strength_dbm:
+    uom: dbm
+  rf_signal_bars:
+  ui_active:

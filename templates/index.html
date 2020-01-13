@@ -1,0 +1,134 @@
+<TMPL_IF settings>
+	<div class="wide">EcoWater Plugin Settings</div>
+	<form>
+		<div class="ui-field-contain">
+			<label for="ewuser">EcoWater User</label>
+			<input type="text" name="ewuser" id="ewuser" data-mini="false" value="<TMPL_VAR Main.ewuser>" placeholder="">
+		</div>
+		<div class="ui-field-contain">
+			<label for="ewpassword">EcoWater Password</label>
+			<input type="text" name="ewpassword" id="ewpassword" data-mini="false" value="<TMPL_VAR Main.ewpassword>" placeholder="">
+		</div>
+		<div class="ui-field-contain">
+			<label for="ewdsn">EcoWater DSN</label>
+			<input type="text" name="ewdsn" id="ewdsn" data-mini="false" value="<TMPL_VAR Main.ewdsn>" placeholder="">
+		</div>
+
+		<TMPL_VAR MSHTML>
+				<label><input type="checkbox" name="use_http" id="use_http" value="use_http" <TMPL_VAR checked_use_http>>Daten per HTTP senden (Virtuelle Eingänge)</label>
+				<label><input type="checkbox" name="use_udp" id="use_udp" value="use_udp" <TMPL_VAR checked_use_udp>>Daten per UDP senden (Virtueller UDP Eingang)</label>
+					<div class="ui-field-contain">
+						<label for="msudpport">UDP-Port des Miniservers</label>
+						<input type="number" name="msudpport" id="msudpport" data-mini="false" value="<TMPL_VAR Main.msudpport>" placeholder="">
+		
+	</form>
+</TMPL_IF>
+
+<TMPL_IF querybuilder>
+
+	<div class="wide">Query Builder</div>
+	<br>
+	<label for="requestread">HTTP-Request</label>
+	<textarea name="requestread" id="requestread" readonly placeholder="Wähle unten Parameter aus, um hier den notwendigen Aufruf anzuzeigen." data-mini="true"></textarea>
+	<fieldset data-role="controlgroup">
+		<TMPL_LOOP GParams>
+			<input type="checkbox" class="gparameter" name="parameter-<TMPL_VAR Name>" id="parameter-<TMPL_VAR Name>" gruenbeckname="<TMPL_VAR Name>" data-mini="true">
+		<label for="parameter-<TMPL_VAR Name>"><TMPL_VAR Name>: <TMPL_VAR LangStr></label>
+		</TMPL_LOOP>
+	</fieldset>
+</TMPL_IF>
+
+<TMPL_IF logfiles>
+
+	<div class="wide">Logfiles</div>
+	<br>
+	<TMPL_VAR LOGLIST_HTML>
+	<br>
+
+</TMPL_IF>
+
+
+	<!-- <TMPL_LOOP GParams> -->
+	<!-- <input type="text" value="EcoWater:\i<TMPL_VAR Name>\i\v" data-mini="true"> -->
+	<!-- </TMPL_LOOP> -->
+
+<script>
+
+var url = "index.cgi";
+var vars = {};
+	
+$(document).on('pageinit', function() {
+
+	if( $('#use_udp').is(':checked')) $('#msudpport').textinput('enable');
+	else  $('#msudpport').textinput('disable');
+	
+	
+	$( ":input" ).blur(function(e){change_value("change", e.target.id, $(this).val())});
+	$( "input[type='checkbox']" ).change(function(e){change_value("change", e.target.id, $(this).prop("checked"))});
+
+	$( ":input" ).focusin(function(e){ 
+		vars['old' + $(this).attr("id")] = $(this).val();
+		var respid = $(this).attr("id")+"resp";
+		// $("#"+respid).text("");
+		// $("#"+respid).css("color", "");
+		
+	});
+	
+	$('#use_udp').change(function(){
+		if( $('#use_udp').is(':checked')) $('#msudpport').textinput('enable');
+		else  $('#msudpport').textinput('disable');
+	});
+
+});
+
+function change_value (action, key, value)
+{
+	console.log("Action is", action, "Key is", key, "Value is", value);
+	if (vars['old' + key] === value) {
+		console.log("Nothing changed.");
+		return;
+	}
+
+	var posting = $.post( url, { 	action: action,
+					key: key,
+					value: value,
+				 });
+	posting.done(function(data){
+				console.log("OK");
+				// $("#" + data.key + "resp").css("color", "green");
+				//$("#" + data.key + "resp").text("Successfully saved");
+			 });
+	posting.error(function(data){
+				console.log("Error");
+				//$("#" + data.key + "resp").css("color", "red");
+				//$("#" + data.key + "resp").text("Error writing");
+			 });
+
+}
+
+$(".gparameter").change(function(e){calculate_url();});
+
+var par_selected;
+
+function calculate_url()
+{
+	par_selected = "";
+	$(".gparameter").each(function(){ 
+		if($(this).is(":checked")) 
+			par_selected = par_selected + $(this).attr('ecowatername') + '&';
+	});
+	if (par_selected.length > 0) {
+		par_selected = "action=GET&" + par_selected;
+		par_selected = par_selected.slice(0, -1);
+		// var lbhost = location.protocol + '//' + '<lbuser>:<lbpass>@' + location.host;
+		//if (location.port) 
+		//	lbhost = lbhost + ':' + location.port;
+		// par_selected = lbhost + '/admin/plugins/gruenbeck/request.cgi?' + par_selected;
+		par_selected = '/admin/plugins/ecowater/request.cgi?' + par_selected;
+	}
+	
+	// console.log("Current URL is", par_selected);
+	$('#requestread').val(par_selected);
+}
+
+</script>

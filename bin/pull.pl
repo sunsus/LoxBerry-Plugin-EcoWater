@@ -61,7 +61,7 @@ $ewuser = $ARGV[0] if $ARGV[0];
 my $token =  login($ewuser, $ewpassword);
 if(!$pcfg->param("Main.ewmodelid")) {
     my ($model_id, $system_type) = get_model_id($ewdsn, $token);
-    $pcfg->param("Main.ewmodelid", $$model_id);
+    $pcfg->param("Main.ewmodelid", $model_id);
     $pcfg->param("Main.ewsystemtype", $system_type);
 }
 my ($deviceId, $status) = get_device_id($ewdsn, $token);

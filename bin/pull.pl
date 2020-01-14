@@ -6,12 +6,12 @@ use LoxBerry::System;
 use LoxBerry::IO;
 use LoxBerry::Log;
 use JSON;
+use YAML::XS 'LoadFile';
 
 use LWP::UserAgent;
 use HTTP::Request;
 
 my $VOLUME_GALLONS_TO_LITERS = 3.78541; # l/g
-my $SALT_LEVEL_TENTHS_MAX = 80;
 
 my $ewdsn = '';
 my $ewuser = '';
@@ -59,9 +59,14 @@ $ewdsn = $ARGV[2] if $ARGV[2];
 $ewpassword = $ARGV[1] if $ARGV[1];
 $ewuser = $ARGV[0] if $ARGV[0];
 my $token =  login($ewuser, $ewpassword);
+if(!$pcfg->param("Main.ewmodelid")) {
+    my ($model_id, $system_type) = get_model_id($ewdsn, $token);
+    $pcfg->param("Main.ewmodelid", $$model_id);
+    $pcfg->param("Main.ewsystemtype", $system_type);
+}
 my ($deviceId, $status) = get_device_id($ewdsn, $token);
 frequent_data($ewdsn, $token);
-my %values =  get_data($ewdsn, $token);
+my %values =  get_data($ewdsn, $token, $pcfg->param("Main.ewmodelid"));
 $values{status} = $status eq "Online" ? 1 : 0;
 my $json_values=  $json->encode(\%values);
 LOGINF $json_values;
@@ -125,6 +130,32 @@ sub get_device_id {
     # print $resp->as_string();
     return ($json->decode($resp->content())->{device}{id}, $json->decode($resp->content())->{device}{connection_status});
 }
+
+sub get_model_id {
+    my ($dsn, $accessToken) = @_;
+    # /apiv1/dsns/{dsn}/properties.json
+    my $properties = 'names[]=model_id&names[]=system_type';
+    my $req = HTTP::Request->new('GET', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties.json?$properties");
+    $req->header('Authorization' => 'Bearer '.$accessToken);
+    $req->header( 'Content-Type' => 'application/json');
+    my $lwp = LWP::UserAgent->new;
+    $lwp->timeout(5);
+    LOGINF "GET device model_id / system_type request\n";
+    # print $req->as_string();
+    my $resp = $lwp->request($req);
+    # print "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
+    # print $resp->as_string();
+    my $elements = $json->decode($resp->content());
+
+    my $config = device_config(91007);
+
+    my %values;
+    foreach my $item (@$elements) {
+        if ($item->{property}{name} eq  "model_id") { $values{'model_id'}  = $item->{property}{value}}
+        if ($item->{property}{name} eq  "system_type") { $values{'system_type'}  = $item->{property}{value}; }
+    }
+    return ($values{'model_id'},  $values{'system_type'});
+}
 sub frequent_data {
     my ($dsn, $accessToken) = @_;
     # Create Request
@@ -143,9 +174,10 @@ sub frequent_data {
 }
 
 sub get_data {
-    my ($dsn, $accessToken) = @_;
+    my ($dsn, $accessToken, $modelId) = @_;
     # /apiv1/dsns/{dsn}/properties.json
-    my $req = HTTP::Request->new('GET', 'https://ads-field.aylanetworks.com/apiv1/dsns/'.$dsn.'/properties.json');
+    my $properties = 'names[]=salt_level_tenths&names[]=out_of_salt_estimate_days&names[]=gallons_used_today&names[]=avg_daily_use_gals&names[]=current_water_flow_gpm&names[]=treated_water_avail_gals&names[]=model_id&names[]=system_type&names[]=regen_enable_enum&names[]=regen_status_enum&names[]=regen_time_secs&names[]=&names[]=avg_daily_gal_tenths&names[]=days_in_operation&names[]=dispensed_gal&names[]=filter_life_remaining_days&names[]=tds_removal_percent';
+    my $req = HTTP::Request->new('GET', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties.json?$properties");
     $req->header('Authorization' => 'Bearer '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     my $lwp = LWP::UserAgent->new;
@@ -157,15 +189,15 @@ sub get_data {
     # print $resp->as_string();
     my $elements = $json->decode($resp->content());
 
+    my $config = device_config($modelId);
+
     my %values;
     foreach my $item (@$elements) {
-        # TODO: get value from Config YAML PROP_SALT_LEVEL_TENTHS_MAX
-        if ($item->{property}{name} eq  "salt_level_tenths") { $values{'salt_level'}  = $item->{property}{value} * 100 / $SALT_LEVEL_TENTHS_MAX; }
+        if ($item->{property}{name} eq  "salt_level_tenths") { $values{'salt_level'}  = $item->{property}{value} * 100 / $config->{device_properties}->{salt_level_tenths}->{max}; }
         if ($item->{property}{name} eq  "out_of_salt_estimate_days") { $values{'out_of_salt_estimate_days'}  = $item->{property}{value}; }
         if ($item->{property}{name} eq  "gallons_used_today") { $values{'used_today_liters'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
         if ($item->{property}{name} eq  "avg_daily_use_gals") { $values{'avg_daily_use_liters'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
-        # TODO: get value from Config YAML
-        if ($item->{property}{name} eq  "current_water_flow_gpm") { $values{'current_water_flow_lpm'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS * 0.1; }
+        if ($item->{property}{name} eq  "current_water_flow_gpm") { $values{'current_water_flow_lpm'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS * $config->{device_properties}->{current_water_flow_gpm}->{conversion};}
         if ($item->{property}{name} eq  "treated_water_avail_gals") { $values{'treated_water_avail_liters'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
     }
     return %values;
@@ -184,6 +216,15 @@ sub is_online {
     print "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
     # print $resp->as_string();
     return $json->decode($resp->content())->{device}{connection_status};
+}
+
+sub device_config() {
+    my ($deviceType) = @_;
+    my $config = LoadFile("$lbpdatadir/softeners/$deviceType.yml");
+    return $config;
+    # https://www.perl.com/article/29/2013/9/17/How-to-Load-YAML-Config-Files/
+    # "$lbpdatadir/softeners/".$deviceType.".yaml";
+    # my $emailName = $config->{salt_level_tenths}->{max};
 }
 
 END

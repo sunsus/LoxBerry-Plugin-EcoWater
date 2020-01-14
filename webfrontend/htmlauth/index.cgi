@@ -45,7 +45,7 @@ sub form
 	
 	# my %L = LoxBerry::System::readlanguage($maintemplate, "language.ini");
 
-	LoxBerry::Web::lbheader("EcoWater", "https://www.loxwiki.eu/x/...., ");
+	LoxBerry::Web::lbheader("EcoWater", "https://www.loxwiki.eu/x/J4jPAw");
 
 	# For Settings form
 	if ($R::form eq 'settings') {

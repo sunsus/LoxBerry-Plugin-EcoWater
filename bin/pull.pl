@@ -11,6 +11,8 @@ use YAML::XS 'LoadFile';
 use LWP::UserAgent;
 use HTTP::Request;
 
+use List::MoreUtils qw(first_index);
+
 my $VOLUME_GALLONS_TO_LITERS = 3.78541; # l/g
 
 my $ewdsn = '';
@@ -64,9 +66,11 @@ if(!$pcfg->param("Main.ewmodelid")) {
     $pcfg->param("Main.ewmodelid", $model_id);
     $pcfg->param("Main.ewsystemtype", $system_type);
 }
+# Read Device Config from YAML
+my $config = device_config($pcfg->param("Main.ewmodelid"));
 my ($deviceId, $status) = get_device_id($ewdsn, $token);
 frequent_data($ewdsn, $token);
-my %values =  get_data($ewdsn, $token, $pcfg->param("Main.ewmodelid"));
+my %values =  get_data($ewdsn, $token, $config);
 $values{status} = $status eq "Online" ? 1 : 0;
 my $json_values=  $json->encode(\%values);
 LOGINF $json_values;
@@ -83,8 +87,7 @@ if ($usehttp) {
 }
 
 
-sub read_config
-{
+sub read_config {
 
     if (! -e $pcfgfile) {
         $pcfg = new Config::Simple(syntax=>'ini');
@@ -156,11 +159,22 @@ sub get_model_id {
     }
     return ($values{'model_id'},  $values{'system_type'});
 }
-sub frequent_data {
-    my ($dsn, $accessToken) = @_;
+
+sub get_enum_int {
+    my ($config, $enum, $value) = @_;
+    return first_index { $_ eq $value } @{$config->{device_properties}->{$enum}->{enum}};
+}
+
+sub get_int_enum {
+    my ($config, $enum, $index) = @_;
+    return $config->{device_properties}->{$enum}->{enum}[$index];
+}
+
+sub set_data_point {
+    my ($dsn, $key, $value, $accessToken) = @_;
     # Create Request
-    my $req = HTTP::Request->new('POST', 'https://ads-field.aylanetworks.com/apiv1/dsns/'.$dsn.'/properties/get_frequent_data/datapoints.json');
-    my $frequentDataRequest = {'datapoint' => {'value' => 1}};
+    my $req = HTTP::Request->new('POST', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties/$key/datapoints.json");
+    my $frequentDataRequest = {'datapoint' => {'value' => $value}};
     $req->header('Authorization' => 'Bearer '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     $req->content($json->encode($frequentDataRequest));
@@ -173,10 +187,30 @@ sub frequent_data {
     # print $resp->as_string();
 }
 
+sub frequent_data {
+    my ($dsn, $accessToken) = @_;
+    set_data_point($dsn, 'get_frequent_data', 1, $accessToken)
+}
+
+sub start_regen {
+    my ($dsn, $accessToken) = @_;
+    set_data_point($dsn, 'regen_status_enum', get_enum_int($config, 'regen_status_enum', 'regenerating'), $accessToken)
+}
+
+sub plan_regen {
+    my ($dsn, $accessToken) = @_;
+    set_data_point($dsn, 'regen_status_enum', get_enum_int($config, 'regen_status_enum', 'scheduled'), $accessToken)
+}
+
+sub cancel_regen {
+    my ($dsn, $accessToken) = @_;
+    set_data_point($dsn, 'regen_status_enum', get_enum_int($config, 'regen_status_enum', 'none'), $accessToken)
+}
+
 sub get_data {
-    my ($dsn, $accessToken, $modelId) = @_;
+    my ($dsn, $accessToken, $config) = @_;
     # /apiv1/dsns/{dsn}/properties.json
-    my $properties = 'names[]=salt_level_tenths&names[]=out_of_salt_estimate_days&names[]=gallons_used_today&names[]=avg_daily_use_gals&names[]=current_water_flow_gpm&names[]=treated_water_avail_gals&names[]=model_id&names[]=system_type&names[]=regen_enable_enum&names[]=regen_status_enum&names[]=regen_time_secs&names[]=&names[]=avg_daily_gal_tenths&names[]=days_in_operation&names[]=dispensed_gal&names[]=filter_life_remaining_days&names[]=tds_removal_percent';
+    my $properties = 'names[]=salt_level_tenths&names[]=out_of_salt_estimate_days&names[]=gallons_used_today&names[]=avg_daily_use_gals&names[]=current_water_flow_gpm&names[]=treated_water_avail_gals&names[]=model_id&names[]=system_type&names[]=regen_enable_enum&names[]=regen_status_enum&names[]=regen_time_secs&names[]=avg_daily_gal_tenths&names[]=days_in_operation&names[]=dispensed_gal&names[]=filter_life_remaining_days&names[]=tds_removal_percent';
     my $req = HTTP::Request->new('GET', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties.json?$properties");
     $req->header('Authorization' => 'Bearer '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
@@ -189,8 +223,6 @@ sub get_data {
     # print $resp->as_string();
     my $elements = $json->decode($resp->content());
 
-    my $config = device_config($modelId);
-
     my %values;
     foreach my $item (@$elements) {
         if ($item->{property}{name} eq  "salt_level_tenths") { $values{'salt_level'}  = $item->{property}{value} * 100 / $config->{device_properties}->{salt_level_tenths}->{max}; }
@@ -199,6 +231,14 @@ sub get_data {
         if ($item->{property}{name} eq  "avg_daily_use_gals") { $values{'avg_daily_use_liters'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
         if ($item->{property}{name} eq  "current_water_flow_gpm") { $values{'current_water_flow_lpm'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS * $config->{device_properties}->{current_water_flow_gpm}->{conversion};}
         if ($item->{property}{name} eq  "treated_water_avail_gals") { $values{'treated_water_avail_liters'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
+        if ($item->{property}{name} eq  "regen_enable_enum") { $values{'regen_enable_enum_text'}  = get_int_enum($config, 'regen_enable_enum', $item->{property}{value});}
+        if ($item->{property}{name} eq  "regen_enable_enum") { $values{'regen_enable_enum'}  = $item->{property}{value};}
+        if ($item->{property}{name} eq  "regen_status_enum") { $values{'regen_status_enum_text'}  = get_int_enum($config, 'regen_status_enum', $item->{property}{value});}
+        if ($item->{property}{name} eq  "regen_status_enum") { $values{'regen_status_enum'}  = $item->{property}{value};}
+        if ($item->{property}{name} eq  "regen_time_secs") { $values{'regen_time_secs'}  = $item->{property}{value};}
+        if ($item->{property}{name} eq  "avg_daily_gal_tenths") { $values{'avg_daily_liters_tenths'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
+        if ($item->{property}{name} eq  "days_in_operation") { $values{'days_in_operation'}  = $item->{property}{value}; }
+        if ($item->{property}{name} eq  "dispensed_gal") { $values{'dispensed_liters'}  = $item->{property}{value} * $VOLUME_GALLONS_TO_LITERS; }
     }
     return %values;
 }
@@ -218,7 +258,7 @@ sub is_online {
     return $json->decode($resp->content())->{device}{connection_status};
 }
 
-sub device_config() {
+sub device_config {
     my ($deviceType) = @_;
     my $config = LoadFile("$lbpdatadir/softeners/$deviceType.yml");
     return $config;

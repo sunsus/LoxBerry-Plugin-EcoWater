@@ -129,6 +129,9 @@ sub get_device_id {
     LOGINF "GET device id request\n";
     # print $req->as_string();
     my $resp = $lwp->request($req);
+    if($log->loglevel() eq "7") {
+        LOGINF "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
+    }
     # print "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
     # print $resp->as_string();
     return ($json->decode($resp->content())->{device}{id}, $json->decode($resp->content())->{device}{connection_status});
@@ -146,7 +149,9 @@ sub get_model_id {
     LOGINF "GET device model_id / system_type request\n";
     # print $req->as_string();
     my $resp = $lwp->request($req);
-    # print "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
+    if($log->loglevel() eq "7") {
+        LOGINF "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
+    }
     # print $resp->as_string();
     my $elements = $json->decode($resp->content());
 

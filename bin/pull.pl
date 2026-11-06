@@ -122,10 +122,10 @@ sub login {
 sub get_device_id {
     my ($dsn, $accessToken) = @_;
     my $req = HTTP::Request->new('GET', 'https://ads-field.aylanetworks.com/apiv1/dsns/'.$dsn.'.json');
-    $req->header('Authorization' => 'Bearer '.$accessToken);
+    $req->header('Authorization' => 'auth_token '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     my $lwp = LWP::UserAgent->new;
-    $lwp->timeout(5);
+    $lwp->timeout(15);
     LOGINF "GET device id request\n";
     # print $req->as_string();
     my $resp = $lwp->request($req);
@@ -142,10 +142,10 @@ sub get_model_id {
     # /apiv1/dsns/{dsn}/properties.json
     my $properties = 'names[]=model_id&names[]=system_type';
     my $req = HTTP::Request->new('GET', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties.json?$properties");
-    $req->header('Authorization' => 'Bearer '.$accessToken);
+    $req->header('Authorization' => 'auth_token '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     my $lwp = LWP::UserAgent->new;
-    $lwp->timeout(5);
+    $lwp->timeout(15);
     LOGINF "GET device model_id / system_type request\n";
     # print $req->as_string();
     my $resp = $lwp->request($req);
@@ -180,11 +180,11 @@ sub set_data_point {
     # Create Request
     my $req = HTTP::Request->new('POST', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties/$key/datapoints.json");
     my $frequentDataRequest = {'datapoint' => {'value' => $value}};
-    $req->header('Authorization' => 'Bearer '.$accessToken);
+    $req->header('Authorization' => 'auth_token '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     $req->content($json->encode($frequentDataRequest));
     my $lwp = LWP::UserAgent->new;
-    $lwp->timeout(5);
+    $lwp->timeout(15);
     LOGINF "POST Frequent Data request\n";
     # print $req->as_string();
     my $resp = $lwp->request($req);
@@ -217,15 +217,17 @@ sub get_data {
     # /apiv1/dsns/{dsn}/properties.json
     my $properties = 'names[]=salt_level_tenths&names[]=out_of_salt_estimate_days&names[]=gallons_used_today&names[]=avg_daily_use_gals&names[]=current_water_flow_gpm&names[]=treated_water_avail_gals&names[]=model_id&names[]=system_type&names[]=regen_enable_enum&names[]=regen_status_enum&names[]=regen_time_secs&names[]=avg_daily_gal_tenths&names[]=days_in_operation&names[]=dispensed_gal&names[]=filter_life_remaining_days&names[]=tds_removal_percent';
     my $req = HTTP::Request->new('GET', "https://ads-field.aylanetworks.com/apiv1/dsns/$dsn/properties.json?$properties");
-    $req->header('Authorization' => 'Bearer '.$accessToken);
+    $req->header('Authorization' => 'auth_token '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     my $lwp = LWP::UserAgent->new;
-    $lwp->timeout(5);
+    $lwp->timeout(20);
+
     LOGINF "GET device data request\n";
-    # print $req->as_string();
     my $resp = $lwp->request($req);
-    # print "Response status: " . $resp->status_line . " | Full response: " . $resp->content."\n";
-    # print $resp->as_string();
+    LOGINF "Response status: " . $resp->status_line . " | Content length: " . length($resp->content // '') . "\n";
+    LOGINF "Full response: " . $resp->content . "\n";
+    die "get_data failed: " . $resp->status_line unless $resp->is_success && length($resp->content);
+
     my $elements = $json->decode($resp->content());
 
     my %values;
@@ -251,10 +253,10 @@ sub get_data {
 sub is_online {
     my ($deviceId, $accessToken) = @_;
     my $req = HTTP::Request->new('GET', 'https://ads-field.aylanetworks.com/apiv1/devices/'.$deviceId.'.json');
-    $req->header('Authorization' => 'Bearer '.$accessToken);
+    $req->header('Authorization' => 'auth_token '.$accessToken);
     $req->header( 'Content-Type' => 'application/json');
     my $lwp = LWP::UserAgent->new;
-    $lwp->timeout(5);
+    $lwp->timeout(15);
     print "GET is online request\n";
     # print $req->as_string();
     my $resp = $lwp->request($req);
